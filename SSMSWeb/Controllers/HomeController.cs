@@ -26,19 +26,40 @@ public class HomeController : Controller
     [HttpPost]
     public IActionResult Connect([FromBody] ConnectRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request?.ConnectionString))
+        if (string.IsNullOrWhiteSpace(request?.ServerName))
         {
-            return BadRequest("La chaîne de connexion ne peut pas être vide.");
+            return BadRequest("Le nom du serveur ne peut pas être vide.");
+        }
+
+        string connectionString = "";
+
+        if (request.AuthType == "windows")
+        {
+            // Authentification Windows
+            connectionString = $"Server={request.ServerName};Database=master;Trusted_Connection=True;TrustServerCertificate=True;";
+        }
+        else if (request.AuthType == "sql")
+        {
+            // Authentification SQL (login & password)
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest("Nom d'utilisateur et mot de passe requis pour l'authentification SQL Server.");
+            }
+            connectionString = $"Server={request.ServerName};Database=master;User Id={request.Username};Password={request.Password};TrustServerCertificate=True;";
+        }
+        else
+        {
+            return BadRequest("Type d'authentification invalide.");
         }
 
         try
         {
-            using (var connection = new SqlConnection(request.ConnectionString))
+            using (var connection = new SqlConnection(connectionString))
             {
-                connection.Open(); // Exception if not working
+                connection.Open(); // Teste la connexion
             }
 
-            Response.Cookies.Append("DbConnectionString", request.ConnectionString, new CookieOptions 
+            Response.Cookies.Append("DbConnectionString", connectionString, new CookieOptions 
             { 
                 HttpOnly = true,
                 SameSite = SameSiteMode.Strict
@@ -50,6 +71,14 @@ public class HomeController : Controller
         {
             return BadRequest(new { message = $"Échec de la connexion : {ex.Message}" });
         }
+    }
+
+    [HttpPost]
+    public IActionResult Disconnect()
+    {
+        // On supprime le cookie contenant la chaîne de connexion
+        Response.Cookies.Delete("DbConnectionString");
+        return Ok(new { success = true });
     }
 
     [HttpGet]
@@ -89,5 +118,8 @@ public class HomeController : Controller
 
 public class ConnectRequest
 {
-    public string? ConnectionString { get; set; }
+    public string? ServerName { get; set; }
+    public string? AuthType { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
 }
