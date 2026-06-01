@@ -1,0 +1,131 @@
+@{
+    ViewData["Title"] = "Console SQL Server";
+    string serverName = ViewData["ServerName"]?.ToString() ?? "";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2 px-3 py-2 bg-light border rounded">
+    <span class="small">
+        <strong>Serveur&nbsp;:</strong> @serverName
+        &nbsp;&mdash;&nbsp;
+        <strong>Base active&nbsp;:</strong>
+        <span id="activeDbDisplay" class="text-primary fw-semibold">&mdash;</span>
+    </span>
+    <button class="btn btn-sm btn-outline-danger" onclick="disconnect()">D&eacute;connecter</button>
+</div>
+
+<div id="workspace" class="d-flex border rounded overflow-hidden">
+
+    <div id="explorerSidebar">
+        <div class="tree-header">@serverName</div>
+
+        <div>
+            <div class="tree-section-header" onclick="toggleTreeSection('databasesContent')">
+                <span class="toggle-icon" id="toggle-databasesContent">&#9654;</span>
+                <span>Bases de donn&eacute;es</span>
+                <span id="dbCount" class="badge bg-secondary ms-auto">0</span>
+                <button class="tree-add-btn" onclick="event.stopPropagation(); openCreateDbModal()" title="Nouvelle base">&#43;</button>
+            </div>
+            <div id="databasesContent" style="display:none">
+                <div id="databasesTree"></div>
+            </div>
+        </div>
+
+        <div>
+            <div class="tree-section-header" onclick="toggleTreeSection('loginsContent')">
+                <span class="toggle-icon" id="toggle-loginsContent">&#9654;</span>
+                <span>Logins</span>
+                <span id="loginCount" class="badge bg-secondary ms-auto">0</span>
+                <button class="tree-add-btn" onclick="event.stopPropagation(); openCreateLoginModal()" title="Nouveau login">&#43;</button>
+            </div>
+            <div id="loginsContent" style="display:none">
+                <div id="loginsTree"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainArea" class="flex-grow-1 d-flex flex-column overflow-hidden">
+
+        <div class="editor-toolbar d-flex align-items-center gap-2 px-3 py-1 border-bottom bg-light flex-shrink-0">
+            <span class="small text-muted">Base&nbsp;:</span>
+            <span id="editorActiveDb" class="badge bg-primary text-truncate" style="max-width:160px">&mdash;</span>
+            <button class="btn btn-sm btn-success ms-2" disabled title="Disponible en Phase 2">
+                &#9654;&nbsp;Ex&eacute;cuter
+            </button>
+        </div>
+
+        <div id="monacoEditor" class="flex-grow-1" style="min-height:0"></div>
+
+        <div id="resultsPanel" class="border-top flex-shrink-0">
+            <div class="results-tabs">
+                <span class="results-tab active-tab">R&eacute;sultats</span>
+                <span class="results-tab">Messages</span>
+            </div>
+            <div class="results-body d-flex align-items-center justify-content-center text-muted small">
+                Les r&eacute;sultats s'afficheront ici
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="appModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modalTitle"></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-sm btn-primary" id="modalConfirmBtn">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/explorer.js" asp-append-version="true"></script>
+    <script src="~/js/modal.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+    <script>
+        require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            window.sqlEditor = monaco.editor.create(document.getElementById('monacoEditor'), {
+                value: '-- Tapez votre requête SQL ici\n',
+                language: 'sql',
+                theme: 'vs',
+                minimap: { enabled: false },
+                fontSize: 13,
+                lineNumbers: 'on',
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                wordWrap: 'on'
+            });
+
+            monaco.languages.registerCompletionItemProvider('sql', {
+                provideCompletionItems: function (model, position) {
+                    const word = model.getWordUntilPosition(position);
+                    const range = {
+                        startLineNumber: position.lineNumber,
+                        endLineNumber: position.lineNumber,
+                        startColumn: word.startColumn,
+                        endColumn: word.endColumn
+                    };
+                    const suggestions = [];
+                    (_tableCache[_activeDatabase] || []).forEach(t => suggestions.push({
+                        label: t, kind: monaco.languages.CompletionItemKind.Class,
+                        detail: 'Table', insertText: t, range
+                    }));
+                    _databasesList.forEach(db => suggestions.push({
+                        label: db, kind: monaco.languages.CompletionItemKind.Module,
+                        detail: 'Base de données', insertText: db, range
+                    }));
+                    return { suggestions };
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => loadExplorer());
+    </script>
+}
