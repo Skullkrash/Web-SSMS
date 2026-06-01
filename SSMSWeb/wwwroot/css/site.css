@@ -29,3 +29,192 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+#workspace {
+    height: calc(100vh - 160px);
+}
+
+#explorerSidebar {
+    width: 260px;
+    min-width: 260px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+#mainArea {
+    overflow: hidden;
+}
+
+.tree-header {
+    background-color: #343a40;
+    color: #f8f9fa;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tree-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+    font-size: 12px;
+    color: #343a40;
+    background-color: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.tree-section-header:hover {
+    background-color: #dee2e6;
+}
+
+.toggle-icon {
+    font-size: 9px;
+    width: 10px;
+    display: inline-block;
+    transition: transform 0.15s ease;
+    color: #6c757d;
+}
+
+.toggle-icon.open {
+    transform: rotate(90deg);
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 22px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #212529;
+    border-bottom: 1px solid #f0f0f0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.tree-item:hover {
+    background-color: #e2e6ea;
+}
+
+.tree-item.active-db {
+    background-color: #cfe2ff;
+    border-left: 3px solid #0d6efd;
+    padding-left: 19px;
+    font-weight: 600;
+}
+
+.tree-item.login-disabled {
+    color: #adb5bd;
+    font-style: italic;
+}
+
+.tree-icon {
+    flex-shrink: 0;
+}
+
+/* Bouton + dans les en-têtes du tree */
+.tree-add-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 3px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.tree-add-btn:hover {
+    background-color: #ced4da;
+    color: #212529;
+}
+
+/* Éditeur SQL */
+.editor-toolbar {
+    min-height: 38px;
+}
+
+#resultsPanel {
+    height: 160px;
+    overflow: auto;
+    background-color: #fff;
+}
+
+.results-tabs {
+    display: flex;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.results-tab {
+    padding: 3px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #6c757d;
+    user-select: none;
+}
+
+.results-tab:hover {
+    color: #343a40;
+}
+
+.results-tab.active-tab {
+    color: #212529;
+    font-weight: 500;
+    border-bottom: 2px solid #0d6efd;
+}
+
+.results-body {
+    height: calc(160px - 29px);
+}
+
+/* Ligne de base de données (avec flèche expand) */
+.db-item {
+    padding-left: 8px;
+}
+
+.db-toggle {
+    font-size: 9px;
+    width: 12px;
+    flex-shrink: 0;
+    display: inline-block;
+    transition: transform 0.15s ease;
+    color: #6c757d;
+    cursor: pointer;
+    user-select: none;
+}
+
+.db-toggle.open {
+    transform: rotate(90deg);
+}
+
+/* Tables sous une base */
+.table-item {
+    padding-left: 38px;
+    font-size: 11px;
+    color: #495057;
+    cursor: default;
+}
+
+.table-item:hover {
+    background-color: #e9ecef;
+}
+
+.login-type-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    padding: 0 4px;
+    border-radius: 3px;
+    background-color: #dee2e6;
+    color: #6c757d;
+}
