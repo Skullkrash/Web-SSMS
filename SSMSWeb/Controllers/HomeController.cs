@@ -9,6 +9,24 @@ public class HomeController : Controller
 {
     public IActionResult Index()
     {
+        return RedirectToAction("Login");
+    }
+
+    public IActionResult Login()
+    {
+        if (!string.IsNullOrEmpty(Request.Cookies["DbConnectionString"]))
+            return RedirectToAction("Console");
+        return View();
+    }
+
+    public IActionResult Console()
+    {
+        var connStr = Request.Cookies["DbConnectionString"];
+        if (string.IsNullOrEmpty(connStr))
+            return RedirectToAction("Login");
+
+        var builder = new SqlConnectionStringBuilder(connStr);
+        ViewData["ServerName"] = builder.DataSource;
         return View();
     }
 
@@ -59,8 +77,8 @@ public class HomeController : Controller
                 connection.Open(); // Teste la connexion
             }
 
-            Response.Cookies.Append("DbConnectionString", connectionString, new CookieOptions 
-            { 
+            Response.Cookies.Append("DbConnectionString", connectionString, new CookieOptions
+            {
                 HttpOnly = true,
                 SameSite = SameSiteMode.Strict
             });
