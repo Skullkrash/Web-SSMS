@@ -48,7 +48,7 @@
         <div class="editor-toolbar d-flex align-items-center gap-2 px-3 py-1 border-bottom bg-light flex-shrink-0">
             <span class="small text-muted">Base&nbsp;:</span>
             <span id="editorActiveDb" class="badge bg-primary text-truncate" style="max-width:160px">&mdash;</span>
-            <button class="btn btn-sm btn-success ms-2" disabled title="Disponible en Phase 2">
+            <button id="executeBtn" class="btn btn-sm btn-success ms-2" onclick="executeQuery()" title="Exécuter (Ctrl+Entrée)">
                 &#9654;&nbsp;Ex&eacute;cuter
             </button>
         </div>
@@ -57,12 +57,15 @@
 
         <div id="resultsPanel" class="border-top flex-shrink-0">
             <div class="results-tabs">
-                <span class="results-tab active-tab">R&eacute;sultats</span>
-                <span class="results-tab">Messages</span>
+                <span class="results-tab active-tab" id="tabResults" onclick="switchTab('results')">R&eacute;sultats</span>
+                <span class="results-tab" id="tabMessages" onclick="switchTab('messages')">Messages</span>
             </div>
-            <div class="results-body d-flex align-items-center justify-content-center text-muted small">
-                Les r&eacute;sultats s'afficheront ici
+            <div id="resultsContent" class="results-content">
+                <div class="d-flex align-items-center justify-content-center h-100 text-muted small">
+                    Les r&eacute;sultats s'afficheront ici
+                </div>
             </div>
+            <div id="messagesContent" class="results-content" style="display:none"></div>
         </div>
 
     </div>
@@ -87,6 +90,7 @@
 @section Scripts {
     <script src="~/js/explorer.js" asp-append-version="true"></script>
     <script src="~/js/modal.js" asp-append-version="true"></script>
+    <script src="~/js/editor.js" asp-append-version="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
     <script>
         require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
@@ -102,6 +106,8 @@
                 scrollBeyondLastLine: false,
                 wordWrap: 'on'
             });
+
+            window.sqlEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => executeQuery());
 
             monaco.languages.registerCompletionItemProvider('sql', {
                 provideCompletionItems: function (model, position) {
