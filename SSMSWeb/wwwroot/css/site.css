@@ -261,3 +261,25 @@ body {
     background-color: #dee2e6;
     color: #6c757d;
 }
+
+.tree-delete-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: transparent;
+    font-size: 11px;
+    line-height: 1;
+    padding: 0 3px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: color 0.1s;
+}
+
+.tree-item:hover .tree-delete-btn {
+    color: #adb5bd;
+}
+
+.tree-delete-btn:hover {
+    background-color: #f8d7da;
+    color: #dc3545 !important;
+}

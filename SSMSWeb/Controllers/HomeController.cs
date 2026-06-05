@@ -12,6 +12,8 @@ public class HomeController : Controller
         return RedirectToAction("Login");
     }
 
+    #region VIEWS
+
     public IActionResult Login()
     {
         if (!string.IsNullOrEmpty(Request.Cookies["DbConnectionString"]))
@@ -40,6 +42,10 @@ public class HomeController : Controller
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
+
+    #endregion
+
+    #region CONNECTION
 
     [HttpPost]
     public IActionResult Connect([FromBody] ConnectRequest request)
@@ -98,6 +104,10 @@ public class HomeController : Controller
         Response.Cookies.Delete("DbConnectionString");
         return Ok(new { success = true });
     }
+
+    #endregion
+
+    #region FETCH INFORMATION
 
     [HttpGet]
     public IActionResult GetDatabases()
@@ -161,6 +171,149 @@ public class HomeController : Controller
         }
     }
 
+    [HttpGet]
+    public IActionResult GetLogins()
+    {
+        var connectionString = Request.Cookies["DbConnectionString"];
+
+        if (string.IsNullOrEmpty(connectionString))
+            return Unauthorized("Vous n'êtes pas connecté au serveur SQL.");
+
+        try
+        {
+            var logins = new List<object>();
+            var query = @"SELECT name, type_desc, is_disabled
+                          FROM sys.server_principals
+                          WHERE type IN ('S', 'U', 'G')
+                            AND name NOT LIKE '##%'
+                          ORDER BY name";
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using var command = new SqlCommand(query, connection);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    logins.Add(new
+                    {
+                        name = reader["name"].ToString(),
+                        typeDesc = reader["type_desc"].ToString(),
+                        isDisabled = (bool)reader["is_disabled"]
+                    });
+                }
+            }
+            return Json(logins);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erreur lors de la récupération des logins : {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region DB MANAGEMENT
+
+    [HttpPost]
+    public IActionResult CreateDatabase([FromBody] CreateDbRequest request)
+    {
+        var connectionString = Request.Cookies["DbConnectionString"];
+        if (string.IsNullOrEmpty(connectionString)) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(request?.Name))
+            return BadRequest("Nom de base requis.");
+
+        // Validation simple : lettres, chiffres, underscores, tirets
+        if (!System.Text.RegularExpressions.Regex.IsMatch(request.Name, @"^[\w\-]+$"))
+            return BadRequest("Nom de base invalide.");
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+            using var cmd = new SqlCommand($"CREATE DATABASE [{request.Name}]", connection);
+            cmd.ExecuteNonQuery();
+            return Ok(new { success = true });
+        }
+        catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPost]
+    public IActionResult DropDatabase([FromBody] DropDbRequest request)
+    {
+        var connectionString = Request.Cookies["DbConnectionString"];
+        if (string.IsNullOrEmpty(connectionString)) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(request?.Name))
+            return BadRequest("Nom de base requis.");
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+            // Force la déconnexion des sessions actives avant suppression
+            var sql = $"""
+            ALTER DATABASE [{request.Name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+            DROP DATABASE [{request.Name}];
+            """;
+            using var cmd = new SqlCommand(sql, connection);
+            cmd.ExecuteNonQuery();
+            return Ok(new { success = true });
+        }
+        catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    #endregion
+
+    #region LOGIN MANAGEMENT
+
+    [HttpPost]
+    public IActionResult CreateLogin([FromBody] CreateLoginRequest request)
+    {
+        var connectionString = Request.Cookies["DbConnectionString"];
+        if (string.IsNullOrEmpty(connectionString)) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(request?.Name))
+            return BadRequest("Nom de login requis.");
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(request.Name, @"^[\w\\\-\.]+$"))
+            return BadRequest("Nom de login invalide.");
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+
+            string sql = request.Type == "windows"
+                ? $"CREATE LOGIN [{request.Name}] FROM WINDOWS;"
+                : $"CREATE LOGIN [{request.Name}] WITH PASSWORD = '{request.Password?.Replace("'", "''")}';";
+
+            using var cmd = new SqlCommand(sql, connection);
+            cmd.ExecuteNonQuery();
+            return Ok(new { success = true });
+        }
+        catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPost]
+    public IActionResult DropLogin([FromBody] DropLoginRequest request)
+    {
+        var connectionString = Request.Cookies["DbConnectionString"];
+        if (string.IsNullOrEmpty(connectionString)) return Unauthorized();
+        if (string.IsNullOrWhiteSpace(request?.Name))
+            return BadRequest("Nom de login requis.");
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+            using var cmd = new SqlCommand($"DROP LOGIN [{request.Name}]", connection);
+            cmd.ExecuteNonQuery();
+            return Ok(new { success = true });
+        }
+        catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    #endregion
+
     [HttpPost]
     public IActionResult ExecuteQuery([FromBody] QueryRequest request)
     {
@@ -215,46 +368,6 @@ public class HomeController : Controller
             return Ok(new { type = "error", text = ex.Message });
         }
     }
-
-    [HttpGet]
-    public IActionResult GetLogins()
-    {
-        var connectionString = Request.Cookies["DbConnectionString"];
-
-        if (string.IsNullOrEmpty(connectionString))
-            return Unauthorized("Vous n'êtes pas connecté au serveur SQL.");
-
-        try
-        {
-            var logins = new List<object>();
-            var query = @"SELECT name, type_desc, is_disabled
-                          FROM sys.server_principals
-                          WHERE type IN ('S', 'U', 'G')
-                            AND name NOT LIKE '##%'
-                          ORDER BY name";
-
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-                using var command = new SqlCommand(query, connection);
-                using var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    logins.Add(new
-                    {
-                        name = reader["name"].ToString(),
-                        typeDesc = reader["type_desc"].ToString(),
-                        isDisabled = (bool)reader["is_disabled"]
-                    });
-                }
-            }
-            return Json(logins);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Erreur lors de la récupération des logins : {ex.Message}");
-        }
-    }
 }
 
 public class ConnectRequest
@@ -263,6 +376,27 @@ public class ConnectRequest
     public string? AuthType { get; set; }
     public string? Username { get; set; }
     public string? Password { get; set; }
+}
+
+public class CreateDbRequest
+{
+    public string? Name { get; set; }
+}
+
+public class DropDbRequest
+{
+    public string? Name { get; set; }
+}
+
+public class CreateLoginRequest
+{ 
+    public string? Name { get; set; }
+    public string? Type { get; set; }
+    public string? Password { get; set; }
+}
+
+public class DropLoginRequest {
+    public string? Name { get; set; }
 }
 
 public class QueryRequest

@@ -36,7 +36,8 @@ function buildDatabasesTree(databases) {
         dbRow.innerHTML =
             `<span class="db-toggle">&#9654;</span>` +
             `<span class="tree-icon">&#128452;</span>` +
-            `<span class="db-name text-truncate">${escapeHtml(name)}</span>`;
+            `<span class="db-name text-truncate flex-grow-1">${escapeHtml(name)}</span>` +
+            `<button class="tree-delete-btn" title="Supprimer" onclick="event.stopPropagation(); openDropDbModal('${escapeHtml(name)}')">&#10005;</button>`;
 
         const tablesDiv = document.createElement('div');
         tablesDiv.className = 'db-tables-container';
@@ -122,7 +123,8 @@ function buildLoginsTree(logins) {
             `<span class="tree-icon">${icon}</span>` +
             `<span class="text-truncate flex-grow-1">${escapeHtml(login.name)}</span>` +
             `<span class="login-type-badge">${typeLabel}</span>` +
-            disabledBadge;
+            disabledBadge +
+            `<button class="tree-delete-btn" title="Supprimer" onclick="event.stopPropagation(); openDropLoginModal('${escapeHtml(login.name)}')">&#10005;</button>`;
 
         container.appendChild(item);
     });
