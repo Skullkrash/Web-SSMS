@@ -262,6 +262,65 @@ public class HomeController : Controller
         catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
     }
 
+    [HttpPost]
+    public IActionResult BackupDatabase([FromBody] BackupDbRequest request)
+    {
+        var connectionString = Request.Cookies["DbConnectionString"];
+        if (string.IsNullOrEmpty(connectionString)) return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(request?.Name))
+            return BadRequest(new { message = "Nom de base requis." });
+
+        if (string.IsNullOrWhiteSpace(request.Path))
+            return BadRequest(new { message = "Chemin de destination requis." });
+
+        var allowedTypes = new[] { "FULL", "DIFFERENTIAL", "LOG" };
+        if (!allowedTypes.Contains(request.Type?.ToUpperInvariant()))
+            return BadRequest(new { message = "Type de sauvegarde invalide." });
+
+        var backupType = request.Type!.ToUpperInvariant();
+
+        // Construction de la commande T-SQL selon le type
+        string sql = backupType switch
+        {
+            "FULL" => $"""
+            BACKUP DATABASE [{request.Name}]
+            TO DISK = N'{request.Path.Replace("'", "''")}'
+            WITH FORMAT, INIT, NAME = N'{request.Name.Replace("'", "''")}-Full', STATS = 10;
+            """,
+
+            "DIFFERENTIAL" => $"""
+            BACKUP DATABASE [{request.Name}]
+            TO DISK = N'{request.Path.Replace("'", "''")}'
+            WITH DIFFERENTIAL, FORMAT, INIT, NAME = N'{request.Name.Replace("'", "''")}-Diff', STATS = 10;
+            """,
+
+            "LOG" => $"""
+            BACKUP LOG [{request.Name}]
+            TO DISK = N'{request.Path.Replace("'", "''")}'
+            WITH FORMAT, INIT, NAME = N'{request.Name.Replace("'", "''")}-Log', STATS = 10;
+            """,
+
+            _ => throw new InvalidOperationException("Type invalide.")
+        };
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+
+            // Timeout élevé car les backups peuvent être longs
+            using var cmd = new SqlCommand(sql, connection) { CommandTimeout = 1800 };
+            cmd.ExecuteNonQuery();
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     #endregion
 
     #region LOGIN MANAGEMENT
@@ -386,6 +445,13 @@ public class CreateDbRequest
 public class DropDbRequest
 {
     public string? Name { get; set; }
+}
+
+public class BackupDbRequest
+{
+    public string? Name { get; set; }
+    public string? Type { get; set; }
+    public string? Path { get; set; }
 }
 
 public class CreateLoginRequest

@@ -37,6 +37,7 @@ function buildDatabasesTree(databases) {
             `<span class="db-toggle">&#9654;</span>` +
             `<span class="tree-icon">&#128452;</span>` +
             `<span class="db-name text-truncate flex-grow-1">${escapeHtml(name)}</span>` +
+            `<button class="tree-action-btn" title="Sauvegarder" onclick="event.stopPropagation(); openBackupDbModal('${escapeHtml(name)}')">&#128190;</button>` +
             `<button class="tree-delete-btn" title="Supprimer" onclick="event.stopPropagation(); openDropDbModal('${escapeHtml(name)}')">&#10005;</button>`;
 
         const tablesDiv = document.createElement('div');

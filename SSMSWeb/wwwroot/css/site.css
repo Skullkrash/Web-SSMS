@@ -283,3 +283,24 @@ body {
     background-color: #f8d7da;
     color: #dc3545 !important;
 }
+.tree-action-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: transparent;
+    font-size: 11px;
+    line-height: 1;
+    padding: 0 3px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: color 0.1s;
+}
+
+.tree-item:hover .tree-action-btn {
+    color: #adb5bd;
+}
+
+.tree-action-btn:hover {
+    background-color: #fff3cd;
+    color: #856404 !important;
+}
