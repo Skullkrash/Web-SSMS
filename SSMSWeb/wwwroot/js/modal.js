@@ -5,6 +5,7 @@ function openModal({ title, body, confirmLabel = 'Confirmer', confirmClass = 'bt
     btn.textContent = confirmLabel;
     btn.className = `btn btn-sm ${confirmClass}`;
     btn.onclick = onConfirm ?? null;
+    btn.style.display = onConfirm ? '' : 'none';
     bootstrap.Modal.getOrCreateInstance(document.getElementById('appModal')).show();
 }
 
@@ -38,7 +39,7 @@ function openCreateDbModal() {
             const name = document.getElementById('modal-dbName').value.trim();
             if (!name) { showModalError('Le nom est requis.'); return; }
 
-            const res = await fetch('/Home/CreateDatabase', {
+            const res = await fetch('/Database/CreateDatabase', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -63,7 +64,7 @@ function openDropDbModal(name) {
         confirmLabel: 'Supprimer',
         confirmClass: 'btn-danger',
         onConfirm: async () => {
-            const res = await fetch('/Home/DropDatabase', {
+            const res = await fetch('/Database/DropDatabase', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -86,6 +87,97 @@ function openDropDbModal(name) {
 }
 
 // ── Logins ────────────────────────────────────────────────────
+
+async function openLoginDetailsModal(name, typeDesc, isDisabled) {
+    const typeLabel = typeDesc === 'SQL_LOGIN' ? 'SQL Server'
+        : typeDesc === 'WINDOWS_LOGIN' ? 'Windows' : 'Windows (groupe)';
+
+    const statusBadge = isDisabled
+        ? '<span class="badge bg-danger">D&eacute;sactiv&eacute;</span>'
+        : '<span class="badge bg-success">Activ&eacute;</span>';
+
+    const toggleBtn = isDisabled
+        ? `<button class="btn btn-sm btn-success" onclick="_toggleLoginAndRefresh('${escapeHtml(name)}', true)">&#9654; Activer</button>`
+        : `<button class="btn btn-sm btn-warning" onclick="_toggleLoginAndRefresh('${escapeHtml(name)}', false)">&#9646;&#9646; D&eacute;sactiver</button>`;
+
+    const pwdSection = typeDesc === 'SQL_LOGIN'
+        ? `<div class="mt-2">
+               <button class="btn btn-sm btn-outline-secondary" onclick="closeModal(); openChangePasswordModal('${escapeHtml(name)}')">
+                   &#128272; Changer le mot de passe
+               </button>
+           </div>`
+        : '';
+
+    openModal({
+        title: escapeHtml(name),
+        body: `<div class="d-flex gap-4 mb-3">
+                   <div><div class="text-muted small">Type</div><strong>${typeLabel}</strong></div>
+                   <div><div class="text-muted small">Statut</div>${statusBadge}</div>
+               </div>
+               <div class="d-flex gap-2 mb-3">${toggleBtn}</div>
+               ${pwdSection}
+               <div class="mt-3 pt-2 border-top">
+                   <div class="text-muted small mb-2">R&ocirc;les serveur</div>
+                   <div id="modal-roles-loading" class="text-muted small">Chargement...</div>
+                   <div id="modal-roles-grid" class="roles-grid" style="display:none"></div>
+               </div>`,
+        onConfirm: null
+    });
+
+    try {
+        const res = await fetch(`/Login/GetServerRoles?loginName=${encodeURIComponent(name)}`);
+        if (!res.ok) throw new Error();
+        const roles = await res.json();
+
+        const grid = document.getElementById('modal-roles-grid');
+        const loading = document.getElementById('modal-roles-loading');
+        if (!grid) return;
+
+        grid.innerHTML = roles.map(role => `
+            <label class="role-item">
+                <input type="checkbox" ${role.isMember ? 'checked' : ''}
+                    onchange="_toggleServerRole('${escapeHtml(name)}', '${escapeHtml(role.name)}', this.checked, this)">
+                <span>${escapeHtml(role.name)}</span>
+            </label>
+        `).join('');
+
+        loading.style.display = 'none';
+        grid.style.display = '';
+    } catch {
+        const loading = document.getElementById('modal-roles-loading');
+        if (loading) loading.textContent = 'Erreur de chargement des rôles.';
+    }
+}
+
+async function _toggleServerRole(loginName, roleName, add, checkbox) {
+    checkbox.disabled = true;
+    const res = await fetch('/Login/ToggleServerRole', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loginName, roleName, add })
+    });
+    checkbox.disabled = false;
+    if (!res.ok) {
+        checkbox.checked = !add;
+        const err = await res.json().catch(() => ({}));
+        showModalError(err.message ?? 'Erreur lors de la modification du rôle.');
+    }
+}
+
+async function _toggleLoginAndRefresh(name, enable) {
+    const res = await fetch('/Login/ToggleLogin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, enable })
+    });
+    if (res.ok) {
+        closeModal();
+        await loadLogins();
+    } else {
+        const err = await res.json().catch(() => ({}));
+        showModalError(err.message ?? 'Erreur lors de la modification.');
+    }
+}
 
 function openCreateLoginModal() {
     openModal({
@@ -116,7 +208,7 @@ function openCreateLoginModal() {
             if (!name) { showModalError('Le nom est requis.'); return; }
             if (type === 'sql' && !password) { showModalError('Le mot de passe est requis.'); return; }
 
-            const res = await fetch('/Home/CreateLogin', {
+            const res = await fetch('/Login/CreateLogin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, type, password })
@@ -140,7 +232,7 @@ function openDropLoginModal(name) {
         confirmLabel: 'Supprimer',
         confirmClass: 'btn-danger',
         onConfirm: async () => {
-            const res = await fetch('/Home/DropLogin', {
+            const res = await fetch('/Login/DropLogin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -202,7 +294,7 @@ function openBackupDbModal(name) {
             document.getElementById('modal-backupProgress').style.display = 'block';
             document.getElementById('modalConfirmBtn').disabled = true;
 
-            const res = await fetch('/Home/BackupDatabase', {
+            const res = await fetch('/Database/BackupDatabase', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, type, path })
@@ -219,6 +311,91 @@ function openBackupDbModal(name) {
             } else {
                 const err = await res.json().catch(() => ({}));
                 showModalError(err.message ?? 'Erreur lors de la sauvegarde.');
+            }
+        }
+    });
+}
+
+function openRestoreDbModal() {
+    openModal({
+        title: 'Restaurer une base de données',
+        body: `<div class="alert alert-warning py-1 px-2 small mb-2">
+                   &#9888; Les connexions actives seront fermées. Si la base existe déjà, elle sera écrasée.
+               </div>
+               <div class="mb-2">
+                   <label class="form-label small">Nom de la base cible</label>
+                   <input id="modal-restoreName" class="form-control form-control-sm" placeholder="MaBase">
+               </div>
+               <div class="mb-2">
+                   <label class="form-label small">Chemin du fichier .bak</label>
+                   <input id="modal-restorePath" class="form-control form-control-sm" placeholder="C:\\Backups\\MaBase.bak">
+               </div>`,
+        confirmLabel: 'Restaurer',
+        confirmClass: 'btn-warning',
+        onConfirm: async () => {
+            const name = document.getElementById('modal-restoreName').value.trim();
+            const path = document.getElementById('modal-restorePath').value.trim();
+            if (!name) { showModalError('Le nom est requis.'); return; }
+            if (!path) { showModalError('Le chemin est requis.'); return; }
+
+            const btn = document.getElementById('modalConfirmBtn');
+            btn.disabled = true;
+            btn.textContent = 'Restauration en cours...';
+
+            const res = await fetch('/Database/RestoreDatabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, path })
+            });
+
+            btn.disabled = false;
+            btn.textContent = 'Restaurer';
+
+            if (res.ok) {
+                closeModal();
+                await loadDatabases();
+                displayMessage(`Base "${name}" restaurée avec succès.`);
+                switchTab('messages');
+            } else {
+                const err = await res.json().catch(() => ({}));
+                showModalError(err.message ?? 'Erreur lors de la restauration.');
+            }
+        }
+    });
+}
+
+function openChangePasswordModal(name) {
+    openModal({
+        title: `Changer le mot de passe — ${escapeHtml(name)}`,
+        body: `<div class="mb-2">
+                   <label class="form-label small">Nouveau mot de passe</label>
+                   <input type="password" id="modal-newPwd" class="form-control form-control-sm">
+               </div>
+               <div class="mb-2">
+                   <label class="form-label small">Confirmer</label>
+                   <input type="password" id="modal-confirmPwd" class="form-control form-control-sm">
+               </div>`,
+        confirmLabel: 'Modifier',
+        confirmClass: 'btn-primary',
+        onConfirm: async () => {
+            const pwd = document.getElementById('modal-newPwd').value;
+            const confirm = document.getElementById('modal-confirmPwd').value;
+            if (!pwd) { showModalError('Le mot de passe est requis.'); return; }
+            if (pwd !== confirm) { showModalError('Les mots de passe ne correspondent pas.'); return; }
+
+            const res = await fetch('/Login/ChangeLoginPassword', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, password: pwd })
+            });
+
+            if (res.ok) {
+                closeModal();
+                displayMessage(`Mot de passe de "${name}" modifié avec succès.`);
+                switchTab('messages');
+            } else {
+                const err = await res.json().catch(() => ({}));
+                showModalError(err.message ?? 'Erreur lors de la modification.');
             }
         }
     });

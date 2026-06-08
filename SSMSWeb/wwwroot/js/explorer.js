@@ -4,7 +4,7 @@ async function loadExplorer() {
 
 async function loadDatabases() {
     try {
-        const response = await fetch('/Home/GetDatabases');
+        const response = await fetch('/Explorer/GetDatabases');
         if (response.ok) buildDatabasesTree(await response.json());
     } catch (e) {
         console.error('Erreur chargement bases de données:', e);
@@ -13,7 +13,7 @@ async function loadDatabases() {
 
 async function loadLogins() {
     try {
-        const response = await fetch('/Home/GetLogins');
+        const response = await fetch('/Explorer/GetLogins');
         if (response.ok) buildLoginsTree(await response.json());
     } catch (e) {
         console.error('Erreur chargement logins:', e);
@@ -82,7 +82,7 @@ async function toggleDatabaseTables(dbName, dbRow, tablesDiv) {
 
 async function loadTables(dbName, container) {
     try {
-        const response = await fetch(`/Home/GetTables?database=${encodeURIComponent(dbName)}`);
+        const response = await fetch(`/Explorer/GetTables?database=${encodeURIComponent(dbName)}`);
         if (!response.ok) { container.innerHTML = '<div class="table-item text-danger">Erreur de chargement</div>'; return; }
 
         const tables = await response.json();
@@ -126,6 +126,8 @@ function buildLoginsTree(logins) {
             `<span class="login-type-badge">${typeLabel}</span>` +
             disabledBadge +
             `<button class="tree-delete-btn" title="Supprimer" onclick="event.stopPropagation(); openDropLoginModal('${escapeHtml(login.name)}')">&#10005;</button>`;
+
+        item.addEventListener('click', () => openLoginDetailsModal(login.name, login.typeDesc, login.isDisabled));
 
         container.appendChild(item);
     });

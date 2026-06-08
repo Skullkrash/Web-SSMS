@@ -24,6 +24,7 @@
                 <span>Bases de donn&eacute;es</span>
                 <span id="dbCount" class="badge bg-secondary ms-auto">0</span>
                 <button class="tree-add-btn" onclick="event.stopPropagation(); openCreateDbModal()" title="Nouvelle base">&#43;</button>
+                <button class="tree-add-btn" onclick="event.stopPropagation(); openRestoreDbModal()" title="Restaurer une base">&#128229;</button>
             </div>
             <div id="databasesContent" style="display:none">
                 <div id="databasesTree"></div>
@@ -51,6 +52,9 @@
             <button id="executeBtn" class="btn btn-sm btn-success ms-2" onclick="executeQuery()" title="Exécuter (Ctrl+Entrée)">
                 &#9654;&nbsp;Ex&eacute;cuter
             </button>
+            <button class="btn btn-sm btn-outline-secondary ms-1" onclick="exportResultsAsCsv()" title="Exporter les résultats en CSV">
+                &#8659;&nbsp;CSV
+            </button>
         </div>
 
         <div id="monacoEditor" class="flex-grow-1" style="min-height:0"></div>
@@ -59,6 +63,7 @@
             <div class="results-tabs">
                 <span class="results-tab active-tab" id="tabResults" onclick="switchTab('results')">R&eacute;sultats</span>
                 <span class="results-tab" id="tabMessages" onclick="switchTab('messages')">Messages</span>
+                <span class="results-tab" id="tabHistory" onclick="switchTab('history')">Historique</span>
             </div>
             <div id="resultsContent" class="results-content">
                 <div class="d-flex align-items-center justify-content-center h-100 text-muted small">
@@ -66,6 +71,7 @@
                 </div>
             </div>
             <div id="messagesContent" class="results-content" style="display:none"></div>
+            <div id="historyContent" class="results-content" style="display:none"></div>
         </div>
 
     </div>
