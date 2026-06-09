@@ -79,8 +79,9 @@ public class LoginController : Controller
             var safeName = request.Name.Replace("]", "]]");
             using var connection = new SqlConnection(connectionString);
             connection.Open();
-            using var cmd = new SqlCommand($"ALTER LOGIN [{safeName}] WITH PASSWORD = @pwd", connection);
-            cmd.Parameters.AddWithValue("@pwd", request.Password);
+            var safePwd = request.Password.Replace("'", "''");
+            using var cmd = new SqlCommand($"ALTER LOGIN [{safeName}] WITH PASSWORD = N'{safePwd}'", connection);
+            //cmd.Parameters.AddWithValue("@pwd", request.Password);
             cmd.ExecuteNonQuery();
             return Ok();
         }

@@ -102,7 +102,7 @@ async function openLoginDetailsModal(name, typeDesc, isDisabled) {
 
     const pwdSection = typeDesc === 'SQL_LOGIN'
         ? `<div class="mt-2">
-               <button class="btn btn-sm btn-outline-secondary" onclick="closeModal(); openChangePasswordModal('${escapeHtml(name)}')">
+               <button class="btn btn-sm btn-outline-secondary" onclick="closeModalThen(() => openChangePasswordModal('${escapeHtml(name)}'))">
                    &#128272; Changer le mot de passe
                </button>
            </div>`
@@ -362,6 +362,14 @@ function openRestoreDbModal() {
             }
         }
     });
+}
+
+function closeModalThen(callback) {
+    const el = document.getElementById('appModal');
+    const modal = bootstrap.Modal.getInstance(el);
+    if (!modal) { callback(); return; }
+    el.addEventListener('hidden.bs.modal', callback, { once: true });
+    modal.hide();
 }
 
 function openChangePasswordModal(name) {
